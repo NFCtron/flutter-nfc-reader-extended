@@ -16,6 +16,8 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.util.concurrent.CopyOnWriteArrayList
 
 const val PERMISSION_NFC = 1007
@@ -28,6 +30,7 @@ class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, 
     private var activity: Activity? = null
 
     internal var eventSink: EventChannel.EventSink? = null
+    internal var arguments: NFCArguments? = null
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
     private var nfcFlags = NfcAdapter.FLAG_READER_NFC_A or
@@ -76,6 +79,9 @@ class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, 
     // EventChannel.StreamHandler methods
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
         eventSink = events
+        this.arguments = arguments?.toString()?.let {
+            Json.decodeFromString<NFCArguments>(it)
+        }
     }
 
     override fun onCancel(arguments: Any?) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_nfc_reader/extensions.dart';
 import 'package:flutter_nfc_reader/flutter_nfc_reader.dart';
 
 void main() => runApp(MyApp());
@@ -32,8 +33,14 @@ class _NfcScanState extends State<NfcScan> {
   initState() {
     super.initState();
     writerController.text = 'Flutter NFC Scan';
-    FlutterNfcReader.onTagDiscovered().listen((onData) {
+
+    // MIFARE Ultralight protocol always reads 4 pages at a time
+    var args = NFCArguments(TechnologyType.MIFILRE_ULTRALIGHT, [6, 10, 14]);
+
+    FlutterNfcReader.onTagDiscovered(jsonArgs: args.toJson()).listen((onData) {
+      print("id:");
       print(onData.id);
+      print("content:");
       print(onData.content);
     });
   }

@@ -86,11 +86,11 @@ class FlutterNfcReader {
     return result;
   }
 
-  static Stream<NfcData> onTagDiscovered({String instruction}) {
+  static Stream<NfcData> onTagDiscovered({String instruction, String jsonArgs}) {
     if (Platform.isIOS) {
       _callRead(instruction: instruction);
     }
-    return stream.receiveBroadcastStream().map((rawNfcData) {
+    return stream.receiveBroadcastStream(jsonArgs).map((rawNfcData) {
       return NfcData.fromMap(rawNfcData);
     });
   }

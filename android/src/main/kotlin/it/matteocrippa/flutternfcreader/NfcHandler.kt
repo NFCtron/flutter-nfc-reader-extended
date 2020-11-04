@@ -8,6 +8,7 @@ import android.nfc.tech.Ndef
 import android.nfc.tech.NdefFormatable
 import android.os.Handler
 import android.os.Looper
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -80,13 +81,24 @@ class NfcReader(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHan
 class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback {
     override fun onTagDiscovered(tag: Tag) {
         val sink = plugin.eventSink ?: return
-        tag.read { data ->
+        plugin.arguments?.also {
+            readWithArgs(it, tag, sink)
+        } ?: tag.read { data ->
             sink.success(data)
+        }
+    }
+
+    private fun readWithArgs(it: NFCArguments, tag: Tag, sink: EventChannel.EventSink) {
+        val technology = TechnologyType.getType(it.technologyName)
+        if (technology == TechnologyType.MIFILRE_ULTRALIGHT) {
+            tag.readMUL(it.pages) { data ->
+                sink.success(data)
+            }
         }
     }
 }
 
-private fun ByteArray.bytesToHexString(): String? {
+fun ByteArray.bytesToHexString(): String? {
     val stringBuilder = StringBuilder("0x")
 
     for (i in indices) {

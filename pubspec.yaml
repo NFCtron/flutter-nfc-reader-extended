@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  enum_to_string:
+
 flutter:
   plugin:
     androidPackage: it.matteocrippa.flutternfcreader
