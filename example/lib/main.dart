@@ -38,6 +38,7 @@ class _NfcScanState extends State<NfcScan> {
     var args = NFCArguments(TechnologyType.MIFILRE_ULTRALIGHT, [6, 10, 14]);
 
     FlutterNfcReader.onTagDiscovered(jsonArgs: args.toJson()).listen((onData) {
+      print("data from scanner:");
       print("id:");
       print(onData.id);
       print("content:");
@@ -62,13 +63,23 @@ class _NfcScanState extends State<NfcScan> {
         ),
         RaisedButton(
           onPressed: () {
-            FlutterNfcReader.read(instruction: "It's reading");
+
+            // MIFARE Ultralight protocol always reads 4 pages at a time
+            var args = NFCArguments(TechnologyType.MIFILRE_ULTRALIGHT, [6, 10, 14]);
+
+            FlutterNfcReader.read(jsonArgs: args.toJson())
+                .then((value) {
+                    print("id:");
+                    print(value.id);
+                    print("content:");
+                    print(value.content);
+                });
           },
           child: Text("Read"),
         ),
         RaisedButton(
           onPressed: () {
-            FlutterNfcReader.write(" ", writerController.text).then((value) {
+            FlutterNfcReader.write("12", "ËÑ", "MIFILRE_ULTRALIGHT").then((value) {
               print(value.content);
             });
           },

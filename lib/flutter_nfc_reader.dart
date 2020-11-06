@@ -80,8 +80,8 @@ class FlutterNfcReader {
     return result;
   }
 
-  static Future<NfcData> read({String instruction}) async {
-    final Map data = await _callRead(instruction: instruction);
+  static Future<NfcData> read({String instruction, String jsonArgs}) async {
+    final Map data = await _callRead(instruction: instruction, jsonArgs: jsonArgs);
     final NfcData result = NfcData.fromMap(data);
     return result;
   }
@@ -95,15 +95,20 @@ class FlutterNfcReader {
     });
   }
 
-  static Future<Map> _callRead({instruction: String}) async {
+  static Future<Map> _callRead({instruction: String, String jsonArgs}) async {
       return await _channel.invokeMethod('NfcRead', <String, dynamic> {
-        "instruction": instruction
+        "instruction": instruction,
+        "jsonArgs": jsonArgs
       });
   }
 
-  static Future<NfcData> write(String path, String label) async {
+  static Future<NfcData> write(String path, String label, String technology) async {
     final Map data = await _channel.invokeMethod(
-        'NfcWrite', <String, dynamic>{'label': label, 'path': path});
+        'NfcWrite', <String, dynamic> {
+          'label': label,
+          'path': path,
+          "technology": technology
+        });
 
     final NfcData result = NfcData.fromMap(data);
 

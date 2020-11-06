@@ -80,12 +80,13 @@ class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
         eventSink = events
         this.arguments = arguments?.toString()?.let {
-            Json.decodeFromString<NFCArguments>(it)
+            Json.decodeFromString<NFCArguments>(it) // wrap?
         }
     }
 
     override fun onCancel(arguments: Any?) {
         eventSink = null
+        this.arguments = null
     }
 
     private fun NfcAdapter.startNFCReader() {

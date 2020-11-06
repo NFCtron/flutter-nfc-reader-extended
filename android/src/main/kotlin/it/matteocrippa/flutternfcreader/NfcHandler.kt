@@ -8,11 +8,16 @@ import android.nfc.tech.Ndef
 import android.nfc.tech.NdefFormatable
 import android.os.Handler
 import android.os.Looper
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-sealed class AbstractNfcHandler(protected val result: MethodChannel.Result, protected val call: MethodCall) : NfcAdapter.ReaderCallback {
+sealed class AbstractNfcHandler(protected val result: MethodChannel.Result, protected val call: MethodCall) : NfcAdapter.ReaderCallback, IParametrizedRead by ParametrizedRead() {
+    protected var argument: NFCArguments? = null
+
+    init {
+        argument = call.argument<String>("jsonArgs")?.let { parseArgs(it) }
+    }
+
     protected fun unregister() = FlutterNfcReaderPlugin.listeners.remove(this)
 }
 
@@ -22,9 +27,15 @@ class NfcWriter(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHan
                 ?: return result.error("404", "Missing parameter", null)
         val payload = call.argument<String>("label")
                 ?: return result.error("404", "Missing parameter", null)
-        val nfcRecord = NdefRecord(NdefRecord.TNF_EXTERNAL_TYPE, type.toByteArray(), byteArrayOf(), payload.toByteArray())
-        val nfcMessage = NdefMessage(arrayOf(nfcRecord))
-        writeMessageToTag(nfcMessage, tag)
+
+        call.argument<String>("technology").also {
+            writeMUL(tag, type, payload, result)
+        } ?: run {
+            val nfcRecord = NdefRecord(NdefRecord.TNF_EXTERNAL_TYPE, type.toByteArray(), byteArrayOf(), payload.toByteArray())
+            val nfcMessage = NdefMessage(arrayOf(nfcRecord))
+            writeMessageToTag(nfcMessage, tag)
+        }
+
         val data = mapOf(kId to "", kContent to payload, kError to "", kStatus to "write")
         val mainHandler = Handler(Looper.getMainLooper())
         mainHandler.post {
@@ -71,30 +82,23 @@ class NfcWriter(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHan
 
 class NfcReader(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHandler(result, call) {
     override fun onTagDiscovered(tag: Tag) {
-        tag.read { data ->
-            result.success(data)
-        }
+        val callback = { data: Map<*, *> -> result.success(data) }
+        argument?.also {
+            readWithArgs(it, tag, callback)
+        } ?: tag.read(callback)
+
         unregister()
     }
 }
 
-class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback {
+class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback, IParametrizedRead by ParametrizedRead() {
     override fun onTagDiscovered(tag: Tag) {
         val sink = plugin.eventSink ?: return
-        plugin.arguments?.also {
-            readWithArgs(it, tag, sink)
-        } ?: tag.read { data ->
-            sink.success(data)
-        }
-    }
 
-    private fun readWithArgs(it: NFCArguments, tag: Tag, sink: EventChannel.EventSink) {
-        val technology = TechnologyType.getType(it.technologyName)
-        if (technology == TechnologyType.MIFILRE_ULTRALIGHT) {
-            tag.readMUL(it.pages) { data ->
-                sink.success(data)
-            }
-        }
+        val callback = { data: Map<*, *> -> sink.success(data) }
+        plugin.arguments?.also {
+            readWithArgs(it, tag, callback)
+        } ?: tag.read(callback)
     }
 }
 
