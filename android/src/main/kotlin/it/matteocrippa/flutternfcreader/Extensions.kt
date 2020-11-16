@@ -40,10 +40,11 @@ data class NFCArguments(val technologyName: String, val pages: List<Int> = empty
 interface IParametrizedRead {
     fun readWithArgs(it: NFCArguments, tag: Tag, callback: (Map<*, *>) -> Unit)
     fun parseArgs(it: String): NFCArguments
-    fun writeMUL(tag: Tag?, page: String, data: String, result: MethodChannel.Result)
+    fun writeMUL(tag: Tag?, pages: String, hexData: String, result: MethodChannel.Result)
 }
 
 class ParametrizedRead : IParametrizedRead {
+
     override fun readWithArgs(it: NFCArguments, tag: Tag, callback: (Map<*, *>) -> Unit) {
         val technology = TechnologyType.getType(it.technologyName)
         if (technology == TechnologyType.MIFILRE_ULTRALIGHT) {
@@ -53,12 +54,27 @@ class ParametrizedRead : IParametrizedRead {
 
     override fun parseArgs(it: String): NFCArguments = Json.decodeFromString(it)
 
-    override fun writeMUL(tag: Tag?, page: String, data: String, result: MethodChannel.Result) {
+    private fun parseBytesForPage(pages: String, hexData: String) : List<Pair<Int, ByteArray>> {
+        val bytes = hexData
+                .chunked(2)
+                .map { Integer.parseInt(it, 16).toByte() }
+                .chunked(4)
+                .map { it.toByteArray() }
+        return pages
+                .split(",")
+                .map { Integer.parseInt(it) }
+                .zip( bytes )
+    }
+
+    override fun writeMUL(tag: Tag?, pages: String, hexData: String, result: MethodChannel.Result) {
         val tech = MifareUltralight.get(tag)
+        val pageBytes = parseBytesForPage(pages, hexData)
+
         try {
-            val pageIndex = Integer.parseInt(page)
+
             tech.connect()
-            tech.writePage(pageIndex, data.toByteArray())
+            pageBytes.forEach { tech.writePage(it.first, it.second) }
+
         } catch (e: IOException) {
             // TODO consider right reaction...
         } catch (e: NumberFormatException) {

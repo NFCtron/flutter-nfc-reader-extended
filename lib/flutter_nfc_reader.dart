@@ -114,6 +114,18 @@ class FlutterNfcReader {
 
     return result;
   }
+
+  static Future<NfcData> writeMultiple(List<int> pages, String hex, String tech) {
+    if (pages.isEmpty) return Future.error(
+        "Pages indexes list is empty",
+        StackTrace.fromString("FlutterNfcReader.writeMultiple")
+    );
+
+    String pagesStr = pages.map((val) => val.toString()).join(',');
+
+    return write(pagesStr, hex, tech);
+  }
+
   static Future<NFCAvailability> checkNFCAvailability() async {
     var availability = "NFCAvailability.${await _channel.invokeMethod<String>("NfcAvailable")}";
     return NFCAvailability.values.firstWhere((item) => item.toString() == availability);
