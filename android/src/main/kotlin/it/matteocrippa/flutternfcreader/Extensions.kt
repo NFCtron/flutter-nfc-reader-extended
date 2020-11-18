@@ -106,9 +106,11 @@ fun transactionWrite(tech: MifareUltralight, pages: String, hexData: String, cal
     } catch (e: IOException) {
         result.error("-1", "IOException", e.message)
         //tech.close()
+        return
     } catch (e: NumberFormatException) {
         result.error("-1", "Wrong format", null)
         //tech.close() todo consider reuse in retry
+        return
     }
 
     val data = mapOf(kId to "", kContent to hexData, kError to "", kStatus to "write")
