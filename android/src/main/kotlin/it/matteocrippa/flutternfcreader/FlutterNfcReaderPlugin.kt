@@ -39,6 +39,7 @@ class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, 
             NfcAdapter.FLAG_READER_NFC_F or
             NfcAdapter.FLAG_READER_NFC_V
 
+    private var transactionHandler: TransactionHandler? = null
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         require(activity != null) { "Plugin not ready yet" }
@@ -49,6 +50,16 @@ class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, 
         }
 
         when (call.method) {
+            "TransactionStart" -> {
+                transactionHandler = TransactionHandler(result, call)
+                listeners.add(transactionHandler)
+            }
+            "TransactionWrite" -> {
+                transactionHandler?.write(result, call)
+            }
+            "TransactionCheck" -> {
+                transactionHandler?.checkRead(result, call)
+            }
             "NfcEnableReaderMode" ->
                 nfcAdapter!!.startNFCReader()
             "NfcDisableReaderMode" ->

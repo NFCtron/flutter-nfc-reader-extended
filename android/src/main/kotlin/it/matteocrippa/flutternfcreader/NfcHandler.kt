@@ -4,6 +4,7 @@ import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.tech.MifareUltralight
 import android.nfc.tech.Ndef
 import android.nfc.tech.NdefFormatable
 import android.os.Handler
@@ -11,7 +12,7 @@ import android.os.Looper
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-sealed class AbstractNfcHandler(protected val result: MethodChannel.Result, protected val call: MethodCall) : NfcAdapter.ReaderCallback, IParametrizedRead by ParametrizedRead() {
+sealed class AbstractNfcHandler(protected val result: MethodChannel.Result, protected val call: MethodCall) : NfcAdapter.ReaderCallback, IParametrizedIO by ParametrizedIO() {
     protected var argument: NFCArguments? = null
 
     init {
@@ -91,7 +92,7 @@ class NfcReader(result: MethodChannel.Result, call: MethodCall) : AbstractNfcHan
     }
 }
 
-class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback, IParametrizedRead by ParametrizedRead() {
+class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.ReaderCallback, IParametrizedIO by ParametrizedIO() {
     override fun onTagDiscovered(tag: Tag) {
         val sink = plugin.eventSink ?: return
 
@@ -99,6 +100,43 @@ class NfcScanner(private val plugin: FlutterNfcReaderPlugin) : NfcAdapter.Reader
         plugin.arguments?.also {
             readWithArgs(it, tag, callback)
         } ?: tag.read(callback)
+    }
+}
+
+class TransactionHandler(private val readResult: MethodChannel.Result, readCall: MethodCall) : AbstractNfcHandler(readResult, readCall) {
+
+    private val readArgs : NFCArguments? = readCall.argument<String>("jsonArgs")?.let { parseArgs(it) }
+    private val readCallback = { data: Map<*, *> -> readResult.success(data) }
+
+    private lateinit var transactionTech : MifareUltralight
+
+    fun write(result: MethodChannel.Result, call: MethodCall) {
+
+        val type = call.argument<String>("path")
+                ?: return result.error("404", "Missing parameter", null)
+        val payload = call.argument<String>("label")
+                ?: return result.error("404", "Missing parameter", null)
+        val callback = { data: Map<*, *> -> result.success(data) }
+
+        transactionWrite(transactionTech, type, payload, callback, result)
+    }
+
+    fun checkRead(result: MethodChannel.Result, call: MethodCall) {
+
+        val args : NFCArguments? = call.argument<String>("jsonArgs")?.let { parseArgs(it) }
+        val callback = { data: Map<*, *> -> result.success(data) }
+
+        args?.pages?.let { secondRead(transactionTech, it, callback) }
+    }
+
+    override fun onTagDiscovered(tag: Tag) {
+
+        readArgs?.pages?.let {
+            transactionTech = transactionRead(tag, it, readCallback)
+            // transactionTech?.let { transactionTag = tag }
+        }
+
+        unregister()
     }
 }
 

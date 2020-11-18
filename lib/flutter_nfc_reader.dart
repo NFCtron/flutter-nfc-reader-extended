@@ -126,6 +126,57 @@ class FlutterNfcReader {
     return write(pagesStr, hex, tech);
   }
 
+  // todo generalize...
+  static Future<NfcData> transactionRead({String instruction, String jsonArgs}) async {
+    final Map data = await _transactionRead(instruction: instruction, jsonArgs: jsonArgs);
+    final NfcData result = NfcData.fromMap(data);
+    return result;
+  }
+
+  static Future<Map> _transactionRead({instruction: String, String jsonArgs}) async {
+    return await _channel.invokeMethod('TransactionStart', <String, dynamic> {
+      "instruction": instruction,
+      "jsonArgs": jsonArgs
+    });
+  }
+
+  static Future<NfcData> transactionWrite(List<int> pages, String hex, String tech) {
+    if (pages.isEmpty) return Future.error(
+        "Pages indexes list is empty",
+        StackTrace.fromString("FlutterNfcReader.transactionWrite")
+    );
+
+    String pagesStr = pages.map((val) => val.toString()).join(',');
+
+    return _transactionWrite(pagesStr, hex, tech);
+  }
+
+  static Future<NfcData> _transactionWrite(String path, String label, String technology) async {
+    final Map data = await _channel.invokeMethod(
+        'TransactionWrite', <String, dynamic> {
+      'label': label,
+      'path': path,
+      "technology": technology
+    });
+
+    final NfcData result = NfcData.fromMap(data);
+
+    return result;
+  }
+
+  static Future<NfcData> transactionCheck({String instruction, String jsonArgs}) async {
+    final Map data = await _transactionCheck(instruction: instruction, jsonArgs: jsonArgs);
+    final NfcData result = NfcData.fromMap(data);
+    return result;
+  }
+
+  static Future<Map> _transactionCheck({instruction: String, String jsonArgs}) async {
+    return await _channel.invokeMethod('TransactionCheck', <String, dynamic> {
+      "instruction": instruction,
+      "jsonArgs": jsonArgs
+    });
+  }
+
   static Future<NFCAvailability> checkNFCAvailability() async {
     var availability = "NFCAvailability.${await _channel.invokeMethod<String>("NfcAvailable")}";
     return NFCAvailability.values.firstWhere((item) => item.toString() == availability);
