@@ -4,8 +4,10 @@ import android.nfc.Tag
 import android.nfc.tech.MifareUltralight
 import android.nfc.tech.Ndef
 import android.nfc.tech.TagTechnology
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -98,34 +100,42 @@ fun Tag.readMUL(pages: List<Int>, callback: (Map<*, *>) -> Unit) {
     }
 }
 
-fun transactionWrite(tech: MifareUltralight, pages: String, hexData: String, callback: (Map<*, *>) -> Unit, result: MethodChannel.Result) {
+@RequiresApi(Build.VERSION_CODES.O)
+fun transactionWrite(tech: MifareUltralight, pages: String, hexData: String, callback: (Map<*, *>) -> Unit, result: MethodChannel.Result, log: (String, String) -> Int) {
     val pageBytes = parseBytesForPage(pages, hexData)
 
     try {
-        pageBytes.forEach { tech.writePage(it.first, it.second) }
+        pageBytes.forEach {
+            log("writing 1 page start: ", "")
+            tech.writePage(it.first, it.second)
+            log("writing 1 page start: ", "")
+        }
     } catch (e: IOException) {
         result.error("-1", "IOException", e.message)
-        //tech.close()
         return
     } catch (e: NumberFormatException) {
         result.error("-1", "Wrong format", null)
-        //tech.close() todo consider reuse in retry
         return
     }
 
     val data = mapOf(kId to "", kContent to hexData, kError to "", kStatus to "write")
     val mainHandler = Handler(Looper.getMainLooper())
+
+    log("write done: ", "")
     mainHandler.post { callback(data) }
 }
 
-fun transactionRead(tag: Tag?, pages: List<Int>, callback: (Map<*, *>) -> Unit): MifareUltralight {
+@RequiresApi(Build.VERSION_CODES.O)
+fun transactionRead(tag: Tag?, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int): MifareUltralight {
     val tech = MifareUltralight.get(tag)
     tech.connect()
 
     var result = ByteArray(0)
     pages.forEach {
         try {
+            log("reading 1 page start: ", "")
             val page = tech.readPages(it)
+            log("reading 1 page done: ", "")
             result += page
         } catch (e: IOException) {
             // try reread?
@@ -135,25 +145,29 @@ fun transactionRead(tag: Tag?, pages: List<Int>, callback: (Map<*, *>) -> Unit):
     val id = tag?.id?.bytesToHexString()
     val data = mapOf(kId to id, kContent to result.bytesToHexString(), kError to "", kStatus to "reading")
     val mainHandler = Handler(Looper.getMainLooper())
+    log("read 1 done: ", "")
     mainHandler.post { callback(data) }
     return tech
 }
 
 // todo refactor
-fun secondRead(tech: MifareUltralight, pages: List<Int>, callback: (Map<*, *>) -> Unit) {
+@RequiresApi(Build.VERSION_CODES.O)
+fun secondRead(tech: MifareUltralight, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int) {
 
     var result = ByteArray(0)
     pages.forEach {
         try {
+            log("reading 1 page start: ", "")
             val page = tech.readPages(it)
+            log("reading 1 page start: ", "")
             result += page
         } catch (e: IOException) { }
     }
-
     tech.close()
 
     val data = mapOf(kId to "", kContent to result.bytesToHexString(), kError to "", kStatus to "reading")
     val mainHandler = Handler(Looper.getMainLooper())
+    log("read 2 done: ", "")
     mainHandler.post { callback(data) }
 }
 
@@ -167,5 +181,5 @@ private fun parseBytesForPage(pages: String, hexData: String) : List<Pair<Int, B
     return pages
             .split(",")
             .map { Integer.parseInt(it) }
-            .zip( bytes )
+            .zip(bytes)
 }
