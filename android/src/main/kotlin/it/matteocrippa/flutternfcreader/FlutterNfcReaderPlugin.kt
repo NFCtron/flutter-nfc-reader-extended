@@ -22,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 const val PERMISSION_NFC = 1007
 
-@RequiresApi(Build.VERSION_CODES.M)
+@RequiresApi(Build.VERSION_CODES.O)
 class FlutterNfcReaderPlugin : FlutterPlugin, ActivityAware, MethodCallHandler, EventChannel.StreamHandler, NfcAdapter.ReaderCallback {
 
     private var nfcAdapter: NfcAdapter? = null

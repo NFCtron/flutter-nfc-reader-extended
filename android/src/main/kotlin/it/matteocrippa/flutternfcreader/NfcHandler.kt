@@ -7,10 +7,15 @@ import android.nfc.Tag
 import android.nfc.tech.MifareUltralight
 import android.nfc.tech.Ndef
 import android.nfc.tech.NdefFormatable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 sealed class AbstractNfcHandler(protected val result: MethodChannel.Result, protected val call: MethodCall) : NfcAdapter.ReaderCallback, IParametrizedIO by ParametrizedIO() {
     protected var argument: NFCArguments? = null
@@ -110,7 +115,13 @@ class TransactionHandler(private val readResult: MethodChannel.Result, readCall:
 
     private lateinit var transactionTech : MifareUltralight
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
+
+    @RequiresApi(Build.VERSION_CODES.O)
     fun write(result: MethodChannel.Result, call: MethodCall) {
+        Log.i("FlutterNfcReaderPlugin", "write request handled in native: " + fmt.format(LocalDateTime.now()))
+        val log = {s1 : String, s2 : String -> Log.i(s1, fmt.format(LocalDateTime.now())) }
 
         val type = call.argument<String>("path")
                 ?: return result.error("404", "Missing parameter", null)
@@ -118,21 +129,27 @@ class TransactionHandler(private val readResult: MethodChannel.Result, readCall:
                 ?: return result.error("404", "Missing parameter", null)
         val callback = { data: Map<*, *> -> result.success(data) }
 
-        transactionWrite(transactionTech, type, payload, callback, result)
+        transactionWrite(transactionTech, type, payload, callback, result, log)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun checkRead(result: MethodChannel.Result, call: MethodCall) {
+        Log.i("FlutterNfcReaderPlugin", "check read handled in native: " + fmt.format(LocalDateTime.now()))
+        val log = {s1 : String, s2 : String -> Log.i(s1, s2 + fmt.format(LocalDateTime.now())) }
 
         val args : NFCArguments? = call.argument<String>("jsonArgs")?.let { parseArgs(it) }
         val callback = { data: Map<*, *> -> result.success(data) }
 
-        args?.pages?.let { secondRead(transactionTech, it, callback) }
+        args?.pages?.let { secondRead(transactionTech, it, callback, log) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onTagDiscovered(tag: Tag) {
+        Log.i("FlutterNfcReaderPlugin", "onTagDiscovered - starting transaction: " + fmt.format((LocalDateTime.now())))
+        val log = {s1 : String, s2 : String -> Log.i(s1, s2 + fmt.format(LocalDateTime.now())) }
 
         readArgs?.pages?.let {
-            transactionTech = transactionRead(tag, it, readCallback)
+            transactionTech = transactionRead(tag, it, readCallback, log)
             // transactionTech?.let { transactionTag = tag }
         }
 
