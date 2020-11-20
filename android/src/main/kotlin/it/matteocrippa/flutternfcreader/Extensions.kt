@@ -99,76 +99,75 @@ fun Tag.readMUL(pages: List<Int>, callback: (Map<*, *>) -> Unit) {
     }
 }
 
-fun transactionWrite(tech: MifareUltralight, pages: String, hexData: String, callback: (Map<*, *>) -> Unit, result: MethodChannel.Result, log: (String, String) -> Int) {
+fun transactionWrite(tech: MifareUltralight?, pages: String, hexData: String, callback: (Map<*, *>) -> Unit, result: MethodChannel.Result, log: (String, String) -> Int) {
+    if (tech == null) {
+        result.error("-1", "No tech provided.", null)
+        return
+    }
     val pageBytes = parseBytesForPage(pages, hexData)
-
     try {
         pageBytes.forEach {
             log("writing 1 page start: ", "")
             tech.writePage(it.first, it.second)
             log("writing 1 page start: ", "")
         }
+        log("write done: ", "")
     } catch (e: IOException) {
         result.error("-1", "IOException", e.message)
-        //tech.close()
         return
     } catch (e: NumberFormatException) {
-        result.error("-1", "Wrong format", null)
-        //tech.close() todo consider reuse in retry
+        result.error("-1", "Wrong format", e.message)
         return
     } catch (e : Exception) {
         result.error("-1", "Exception", e.message)
         return
     }
-    log("write done: ", "")
 
     val data = mapOf(kId to "", kContent to hexData, kError to "", kStatus to "write")
     val mainHandler = Handler(Looper.getMainLooper())
     mainHandler.post { callback(data) }
 }
 
-fun transactionRead(tag: Tag?, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int): MifareUltralight {
-    val tech = MifareUltralight.get(tag)
-    tech.connect()
-
+fun transactionRead(tag: Tag?, tech: MifareUltralight, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int) {
     var result = ByteArray(0)
-    pages.forEach {
-        try {
-            log("reading 1 page start: ", "")
-            val page = tech.readPages(it)
-            log("reading 1 page done: ", "")
-            result += page
-        } catch (e: IOException) {
-            // try reread?
-        } catch (e : Exception) { }
-    }
-    log("read 1 done: ", "")
+    try {
+        tech.connect()
+        pages.forEach {
+            try {
+                log("reading 1 page start: ", "")
+                val page = tech.readPages(it)
+                log("reading 1 page done: ", "")
+                result += page
+            } catch (e : Exception) { }
+        }
+        log("read 1 done: ", "")
+    } catch (e : Exception) {}
 
     val id = tag?.id?.bytesToHexString()
     val data = mapOf(kId to id, kContent to result.bytesToHexString(), kError to "", kStatus to "reading")
     val mainHandler = Handler(Looper.getMainLooper())
     mainHandler.post { callback(data) }
-    return tech
 }
 
-// todo refactor
-fun secondRead(tech: MifareUltralight, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int) {
-
-    var result = ByteArray(0)
-    pages.forEach {
-        try {
-            log("reading 1 page start: ", "")
-            val page = tech.readPages(it)
-            log("reading 1 page start: ", "")
-            result += page
-        } catch (e: IOException) {
-        } catch (e : Exception) { }
+fun secondRead(tech: MifareUltralight?, pages: List<Int>, callback: (Map<*, *>) -> Unit, log: (String, String) -> Int, result: MethodChannel.Result) {
+    if (tech == null) {
+        result.error("-1", "No tech provided.", null)
+        return
+    }
+    var resultBytes = ByteArray(0)
+    tech.use { tech ->
+        pages.forEach {
+            try {
+                log("reading 1 page start: ", "")
+                val page = tech.readPages(it)
+                log("reading 1 page start: ", "")
+                resultBytes += page
+            } catch (e : Exception) { }
+        }
+        log("read 2 done: ", "")
     }
 
-    tech.close()
-
-    log("read 2 done: ", "")
-    val data = mapOf(kId to "", kContent to result.bytesToHexString(), kError to "", kStatus to "reading")
+    val data = mapOf(kId to "", kContent to resultBytes.bytesToHexString(), kError to "", kStatus to "reading")
     val mainHandler = Handler(Looper.getMainLooper())
     mainHandler.post { callback(data) }
 }

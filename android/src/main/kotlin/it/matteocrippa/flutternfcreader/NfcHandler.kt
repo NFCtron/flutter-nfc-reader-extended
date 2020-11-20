@@ -113,7 +113,7 @@ class TransactionHandler(private val readResult: MethodChannel.Result, readCall:
     private val readArgs : NFCArguments? = readCall.argument<String>("jsonArgs")?.let { parseArgs(it) }
     private val readCallback = { data: Map<*, *> -> readResult.success(data) }
 
-    private lateinit var transactionTech : MifareUltralight
+    private var transactionTech : MifareUltralight? = null
 
     @RequiresApi(Build.VERSION_CODES.O)
     val fmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
@@ -140,20 +140,25 @@ class TransactionHandler(private val readResult: MethodChannel.Result, readCall:
         val args : NFCArguments? = call.argument<String>("jsonArgs")?.let { parseArgs(it) }
         val callback = { data: Map<*, *> -> result.success(data) }
 
-        args?.pages?.let { secondRead(transactionTech, it, callback, log) }
+        args?.pages?.let { secondRead(transactionTech, it, callback, log, result) }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onTagDiscovered(tag: Tag) {
+        unregister()
+
         Log.i("FlutterNfcReaderPlugin", "onTagDiscovered - starting transaction: " + fmt.format((LocalDateTime.now())))
         val log = {s1 : String, s2 : String -> Log.i(s1, s2 + fmt.format(LocalDateTime.now())) }
 
         readArgs?.pages?.let {
-            transactionTech = transactionRead(tag, it, readCallback, log)
-            // transactionTech?.let { transactionTag = tag }
+            val tech = MifareUltralight.get(tag)
+            if (tech == null) {
+                result.error("-1", "No tech created.", null)
+                return
+            }
+            transactionTech = tech
+            transactionRead(tag, tech, it, readCallback, log)
         }
-
-        unregister()
     }
 }
 
