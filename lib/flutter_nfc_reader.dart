@@ -134,10 +134,18 @@ class FlutterNfcReader {
   }
 
   static Future<Map> _transactionRead({instruction: String, String jsonArgs}) async {
-    return await _channel.invokeMethod('TransactionStart', <String, dynamic> {
-      "instruction": instruction,
-      "jsonArgs": jsonArgs
-    });
+    try {
+      return await _channel.invokeMethod('TransactionStart', <String, dynamic> {
+        "instruction": instruction,
+        "jsonArgs": jsonArgs
+      });
+    } catch (e) {
+      final Map errMap =  <String, dynamic> {
+        'nfcStatus': 'error',
+        'nfcError': e.toString()
+      };
+      return Future.value( errMap );
+    }
   }
 
   static Future<NfcData> transactionWrite(List<int> pages, String hex, String tech) {
@@ -152,16 +160,22 @@ class FlutterNfcReader {
   }
 
   static Future<NfcData> _transactionWrite(String path, String label, String technology) async {
-    final Map data = await _channel.invokeMethod(
-        'TransactionWrite', <String, dynamic> {
-      'label': label,
-      'path': path,
-      "technology": technology
-    });
+    try {
+      final Map data = await _channel.invokeMethod(
+          'TransactionWrite', <String, dynamic> {
+        'label': label,
+        'path': path,
+        "technology": technology
+      });
 
-    final NfcData result = NfcData.fromMap(data);
+      final NfcData result = NfcData.fromMap(data);
 
-    return result;
+      return result;
+    } catch (e) {
+      var nfcData = NfcData(error: e.toString());
+      nfcData.status = NFCStatus.error;
+      return Future.value( nfcData );
+    }
   }
 
   static Future<NfcData> transactionCheck({String instruction, String jsonArgs}) async {
@@ -171,10 +185,18 @@ class FlutterNfcReader {
   }
 
   static Future<Map> _transactionCheck({instruction: String, String jsonArgs}) async {
-    return await _channel.invokeMethod('TransactionCheck', <String, dynamic> {
-      "instruction": instruction,
-      "jsonArgs": jsonArgs
-    });
+    try {
+      return await _channel.invokeMethod('TransactionCheck', <String, dynamic>{
+        "instruction": instruction,
+        "jsonArgs": jsonArgs
+      });
+    } catch (e) {
+      final Map errMap =  <String, dynamic> {
+        'nfcStatus': 'error',
+        'nfcError': e.toString()
+      };
+      return Future.value( errMap );
+    }
   }
 
   static Future<NFCAvailability> checkNFCAvailability() async {
