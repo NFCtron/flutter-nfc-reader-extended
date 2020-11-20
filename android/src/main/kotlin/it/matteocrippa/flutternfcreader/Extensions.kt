@@ -67,8 +67,10 @@ class ParametrizedIO : IParametrizedIO {
 
         } catch (e: IOException) {
             result.error("-1", "IOException", e.message)
+            return
         } catch (e: NumberFormatException) {
             result.error("-1", "Wrong format", null)
+            return
         } finally {
             tech.close()
         }
