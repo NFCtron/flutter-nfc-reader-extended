@@ -116,7 +116,10 @@ fun transactionWrite(tech: MifareUltralight, pages: String, hexData: String, cal
         result.error("-1", "Wrong format", null)
         //tech.close() todo consider reuse in retry
         return
-    } catch (e : Exception) { }
+    } catch (e : Exception) {
+        result.error("-1", "Exception", e.message)
+        return
+    }
     log("write done: ", "")
 
     val data = mapOf(kId to "", kContent to hexData, kError to "", kStatus to "write")
@@ -159,7 +162,6 @@ fun secondRead(tech: MifareUltralight, pages: List<Int>, callback: (Map<*, *>) -
             log("reading 1 page start: ", "")
             result += page
         } catch (e: IOException) {
-
         } catch (e : Exception) { }
     }
 
